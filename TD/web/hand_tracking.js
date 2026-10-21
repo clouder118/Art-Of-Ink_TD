@@ -8,6 +8,7 @@ const targetFps = Math.min(30, Math.max(5, Number(query.get('fps') || 30)));
 const deviceId = query.get('camera') || '';
 let socket, modelReady = false, sequence = 0, outstanding = false, sentAt = 0;
 let inferencePending = false;
+let pendingResult = null;
 let lastVideoTime = -1, nextInference = 0, lastHeartbeat = 0;
 let currentStatus = { state: 'loading', message: '正在加载本地模型' };
 let delegate = 'GPU';
@@ -17,15 +18,24 @@ function send(value) {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(value));
 }
 function report(status, message) {
-  currentStatus = { state: status, message, delegate };
+  currentStatus = { ...currentStatus, state: status, message, delegate };
   state.textContent = message;
   send({ kind: 'status', ...currentStatus });
 }
 function connect() {
   socket = new WebSocket(`ws://${location.host}/tracking`);
-  socket.onopen = () => { outstanding = false; send({ kind: 'status', ...currentStatus }); };
-  socket.onmessage = () => { outstanding = false; };
-  socket.onclose = () => { outstanding = false; setTimeout(connect, 1000); };
+  socket.onopen = () => { outstanding = false; pendingResult = null; send({ kind: 'status', ...currentStatus }); };
+  socket.onmessage = () => { outstanding = false; flushResult(); };
+  socket.onclose = () => { outstanding = false; pendingResult = null; setTimeout(connect, 1000); };
+}
+function flushResult() {
+  const now = performance.now();
+  if (!pendingResult || socket?.readyState !== WebSocket.OPEN) return;
+  if (outstanding && now - sentAt < 500) return;
+  send(pendingResult);
+  pendingResult = null;
+  outstanding = true;
+  sentAt = now;
 }
 function paint(result) {
   context.save();
@@ -47,15 +57,15 @@ function paint(result) {
   }
   context.restore();
 }
-function consumeResult(result, inferenceMs) {
+function consumeResult(result, inferenceMs, captureMs) {
   paint(result);
   if (socket?.readyState === WebSocket.OPEN) {
-    send({ kind: 'hands', seq: ++sequence, inferenceMs, sentMs: performance.now(),
+    // One in-flight message plus one replaceable latest result, never a queue.
+    pendingResult = { kind: 'hands', seq: ++sequence, inferenceMs, captureMs, sentMs: performance.now(),
       hands: result.landmarks.map((landmarks, i) => ({ landmarks,
         label: result.handedness[i]?.[0]?.categoryName || 'Unknown',
-        confidence: result.handedness[i]?.[0]?.score || 0 })) });
-    outstanding = true;
-    sentAt = performance.now();
+        confidence: result.handedness[i]?.[0]?.score || 0 })) };
+    flushResult();
   }
 }
 async function tick(now) {
@@ -64,10 +74,15 @@ async function tick(now) {
     send({ kind: 'status', ...currentStatus });
     lastHeartbeat = now;
   }
-  if (!modelReady || inferencePending || video.readyState < 2 || now < nextInference || video.currentTime === lastVideoTime) return;
-  if (outstanding && now - sentAt < 500) return;
+  flushResult();
+  await tryInference(now);
+}
+async function tryInference(now) {
+  if (!modelReady || inferencePending || video.readyState < 2 || now + .1 < nextInference || video.currentTime === lastVideoTime) return;
   lastVideoTime = video.currentTime;
-  nextInference = now + 1000 / targetFps;
+  // Keep the cadence instead of rounding every deadline up to the next repaint.
+  // After a long stall restart from now; never build an inference backlog.
+  nextInference = Math.max(nextInference + 1000 / targetFps, now);
   inferencePending = true;
   try {
     const image = await createImageBitmap(video);
@@ -99,6 +114,8 @@ async function openCamera() {
           lastVideoTime = -1;
           send({kind:'devices',devices:(await navigator.mediaDevices.enumerateDevices())
             .filter(d => d.kind === 'videoinput').map(d => ({id:d.deviceId,label:d.label}))});
+          const settings=stream.getVideoTracks()[0].getSettings?.() || {};
+          currentStatus.videoSettings={width:settings.width,height:settings.height,frameRate:settings.frameRate};
           report('ready', `摄像头已连接 · ${delegate} · ${targetFps} FPS 目标`);
           stream.getVideoTracks()[0].onended = () => {
             report('camera', '摄像头已断开，正在尝试恢复…');
@@ -125,7 +142,8 @@ worker.onmessage = async event => {
     await openCamera();
   } else if (message.kind === 'result') {
     inferencePending = false;
-    consumeResult(message.result, message.inferenceMs);
+    consumeResult(message.result, message.inferenceMs, message.captureMs);
+    await tryInference(performance.now());
   } else if (message.kind === 'error') {
     inferencePending = false;
     report('error', `识别失败：${message.message}`);

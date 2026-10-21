@@ -1,9 +1,12 @@
 {
   "file": "TD/ArtOfInk_TD.toe",
-  "sha256": "dfb272fa0f581f922e0c3bdeadc0395b1c65a57c4203c476ee7975d17f2c0abd",
+  "sha256": "3bf1b08f8391bc3091f5bcd5645595c71fd25e82eaf6a79e64dc9113964d41e1",
   "temporary_nodes_present": [],
   "storage_files": [],
   "preview_default_on": true,
+  "recognition_default_20": true,
   "color_32bit": true,
-  "auto_perform": true
+  "auto_perform": true,
+  "continuous_force_embedded": true,
+  "recognition_diagnostics_embedded": true
 }

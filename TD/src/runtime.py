@@ -6,15 +6,18 @@ import time
 from collections import deque
 
 _controller = None
+_motion = None
 _last_time = None
 _session = None
 _reset_frames = 0
 _metrics = deque(maxlen=600)
 _report_at = 0
+_capture_times = deque(maxlen=120)
+_camera_seq = None
 
 
 def start():
-    global _controller, _last_time, _session, _reset_frames, _report_at
+    global _controller, _motion, _last_time, _session, _reset_frames, _report_at, _camera_seq
     root = me.parent()
     folder = Path(project.folder)
     stop()
@@ -37,11 +40,14 @@ def start():
         root.op('output_window').par.performance.pulse()
         return
     _controller = module.Interaction()
+    _motion = module.MotionResampler()
     _last_time = time.perf_counter()
     _session = None
     _reset_frames = 4
     _report_at = 0
     _metrics.clear()
+    _capture_times.clear()
+    _camera_seq=None
     for key in ['latest_frame', 'tracking_session', 'camera_devices', 'interaction_output', 'replay_start']:
         root.unstore(key)
     root.store('camera_status', {'state':'loading','message':'正在加载本地手部识别'})
@@ -57,6 +63,8 @@ def reset():
     _reset_frames = 4
     if _controller:
         _controller.reset()
+    if _motion:
+        _motion.reset()
 
 
 def fullscreen():
@@ -85,7 +93,7 @@ def _publish(report):
 
 
 def tick():
-    global _last_time, _session, _reset_frames, _report_at
+    global _last_time, _session, _reset_frames, _report_at, _camera_seq
     if _controller is None:
         return
     root = me.parent()
@@ -98,10 +106,18 @@ def tick():
     session = root.fetch('tracking_session', None)
     if session != _session:
         _controller.reset()
+        _motion.reset()
+        _capture_times.clear()
+        _camera_seq=None
         _session = session
     frame = root.fetch('latest_frame', None)
+    if frame and frame.get('seq')!=_camera_seq:
+        _camera_seq=frame.get('seq')
+        captured=frame.get('captureMs')
+        _capture_times.append(captured/1000 if isinstance(captured,(int,float)) else frame['received_at'])
     _controller.smoothing_seconds = root.par.Smoothing.eval()
     interaction = _controller.update(frame, now)
+    interaction = _motion.update(interaction,now)
     root.store('interaction_output', interaction)
     pointer = (interaction['x'],interaction['y'],interaction['dx'],interaction['dy'])
     step = (dt,root.par.Gain.eval(),root.par.Radius.eval(),root.par.Vorticity.eval())
@@ -122,14 +138,16 @@ def tick():
         fps=1/(sum(values)/len(values)) if values else 0
         p95=values[min(len(values)-1,int(len(values)*.95))]*1000
         status=root.fetch('camera_status',{})
+        span=_capture_times[-1]-_capture_times[0] if len(_capture_times)>1 else 0
+        recognition_fps=(len(_capture_times)-1)/span if span>0 and now-(frame or {}).get('received_at',0)<.3 else 0
         root.op('status_text').par.text = ('Art of Ink · DEBUG\n\n'
             'Camera: %s\n%s\n\nInput: %s\nHand: %s\nPosition: %.3f, %.3f\n'
-            'Frame rate: %.1f FPS\nP95 interval: %.1f ms\nInference: %.1f ms\n\n'
+            'Frame rate: %.1f FPS\nP95 interval: %.1f ms\nRecognition: %.1f FPS\nInference: %.1f ms\n\n'
             'Use the component parameters for debug, mute and fullscreen.' %
             (status.get('state','loading'),status.get('message',''),interaction['reason'],
-             interaction['hand'],interaction['x'],interaction['y'],fps,p95,
+             interaction['hand'],interaction['x'],interaction['y'],fps,p95,recognition_fps,
              (frame or {}).get('inferenceMs',0)))
-        report=dict(camera=status,input=interaction,fps=fps,p95_ms=p95,
+        report=dict(camera=status,input=interaction,fps=fps,p95_ms=p95,recognition_fps=recognition_fps,
                     inference_ms=(frame or {}).get('inferenceMs',0),
                     hand_count=len((frame or {}).get('hands',[])),
                     output=[root.op('out').width,root.op('out').height],
@@ -138,7 +156,7 @@ def tick():
 
 
 def stop():
-    global _controller
+    global _controller, _motion
     root=me.parent()
     root.op('hand_camera').par.active=False
     root.op('local_server').par.active=False
@@ -147,6 +165,9 @@ def stop():
     if _controller:
         _controller.reset()
     _controller=None
+    if _motion:
+        _motion.reset()
+    _motion=None
     _vector(root.op('advect_velocity'),0,(.5,.5,0,0))
     _vector(root.op('advect_velocity'),2,(1,))
     _vector(root.op('advect_ink'),1,(1,))

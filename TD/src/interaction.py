@@ -1,5 +1,6 @@
 """Pure, replayable hand-to-fluid interaction; no TD or camera dependency."""
 import math
+from collections import deque
 
 
 def _distance(a, b):
@@ -109,7 +110,11 @@ class Interaction:
             return self._result(reason='activating')
         tip = chosen['landmarks'][8]
         position = (max(0, min(1, 1-float(tip['x']))), max(0, min(1, 1-float(tip['y']))))
-        sample_time = frame['received_at'] - max(0, float(frame.get('inferenceMs', 0))) / 1000
+        captured = frame.get('captureMs')
+        # Browser and TD clocks have different origins; only differences within
+        # the capture clock are used. Receipt time still governs stale input.
+        sample_time = (captured/1000 if isinstance(captured,(int,float)) and math.isfinite(captured)
+                       else frame['received_at'] - max(0, float(frame.get('inferenceMs', 0))) / 1000)
         if not self._baseline:
             self.position = position
             self.previous_time = sample_time
@@ -121,7 +126,6 @@ class Interaction:
         alpha = 1.0 if self.smoothing_seconds <= 0 else 1-math.exp(-dt/self.smoothing_seconds)
         filtered = tuple(old + (new-old)*alpha for old, new in zip(self.position, position))
         delta = tuple(new-old for old, new in zip(self.position, filtered))
-        self.position = filtered
         self.active = True
         length = _distance(delta, (0, 0))
         if length <= self.deadband:
@@ -129,4 +133,61 @@ class Interaction:
         cap = self.max_speed * dt
         if length > cap:
             delta = tuple(v*cap/length for v in delta)
+        # The cursor and its displacement must follow the same limited path.
+        # Otherwise the resampler starts a segment at a different location and
+        # a single noisy detection can teleport the fluid's injection point.
+        self.position = tuple(old+step for old,step in zip(self.position,delta))
         return self._result(delta=delta, velocity=tuple(v/dt for v in delta), reason='active')
+
+
+class MotionResampler:
+    """Spend each observed displacement once, across the intervening render frames.
+
+    Only confirmed movement is interpolated: no velocity extrapolation. Gesture
+    loss, reset or hand takeover immediately discards unfinished movement.
+    """
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.segments=deque()
+        self.hand=None
+        self.previous_time=None
+        self.position=(.5,.5)
+
+    def update(self, observation, now):
+        result=dict(observation,dx=0.0,dy=0.0,vx=0.0,vy=0.0)
+        if not observation['active']:
+            self.reset()
+            return result
+        if self.hand!=observation['hand'] or self.previous_time is None:
+            self.reset()
+            self.hand=observation['hand']
+            self.previous_time=now
+            self.position=(observation['x'],observation['y'])
+            return result
+        elapsed=max(0,now-self.previous_time)
+        self.previous_time=now
+        # Interaction already turns repeated camera results into zero delta.
+        delta=(observation['dx'],observation['dy'])
+        distance=math.hypot(*delta)
+        speed=math.hypot(observation['vx'],observation['vy'])
+        if distance>0:
+            interval=distance/speed if speed>1e-9 else 1/20
+            duration=max(1/120,min(.1,interval))
+            start=(observation['x']-delta[0],observation['y']-delta[1])
+            self.segments.append([start,delta,duration,0.0])
+        budget=min(elapsed,.1)
+        emitted=[0.0,0.0]
+        while self.segments and budget>1e-9:
+            start,delta,duration,used=self.segments[0]
+            step=min(budget,duration-used)
+            fraction=step/duration
+            for axis in range(2):emitted[axis]+=delta[axis]*fraction
+            used+=step;budget-=step
+            self.position=tuple(start[i]+delta[i]*min(1,used/duration) for i in range(2))
+            if used>=duration-1e-9:self.segments.popleft()
+            else:self.segments[0][3]=used
+        result.update(x=self.position[0],y=self.position[1],dx=emitted[0],dy=emitted[1],
+                      vx=emitted[0]/max(elapsed,1e-6),vy=emitted[1]/max(elapsed,1e-6))
+        return result

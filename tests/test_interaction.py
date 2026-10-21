@@ -115,6 +115,26 @@ class InteractionTests(unittest.TestCase):
         r=c.update(frame(3,1.08,[hand(offset=.3)]),1.08)
         self.assertLessEqual(abs(r['vx']),3.00001)
 
+    def test_capture_clock_prevents_transport_jitter_from_changing_speed(self):
+        velocities=[]
+        for i in range(12):
+            captured=10+i*.05
+            received=captured+(.01 if i%2==0 else .035)
+            f=frame(i,received,[hand(offset=-i*.01)])
+            f.update(captureMs=captured*1000,inferenceMs=10)
+            out=self.c.update(f,received)
+            if i:velocities.append(out['vx'])
+        for speed in velocities:self.assertAlmostEqual(speed,.2,places=8)
+
+    def test_speed_limit_keeps_position_and_emitted_delta_consistent(self):
+        previous=self.c.update(frame(1,1,[hand()]),1)
+        for seq,offset in [(2,-.3),(3,0),(4,-.3)]:
+            now=1+(seq-1)*.01
+            current=self.c.update(frame(seq,now,[hand(offset=offset)]),now)
+            self.assertAlmostEqual(current['x']-previous['x'],current['dx'])
+            self.assertLessEqual(math.hypot(current['dx'],current['dy']),.030001)
+            previous=current
+
 
 if __name__=='__main__':
     unittest.main()

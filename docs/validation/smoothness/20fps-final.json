@@ -1,0 +1,25 @@
+{
+  "target_recognition_fps": 20,
+  "camera": {
+    "kind": "status",
+    "state": "ready",
+    "message": "摄像头已连接 · GPU · 20 FPS 目标",
+    "delegate": "GPU",
+    "videoSettings": {
+      "width": 640,
+      "height": 480,
+      "frameRate": 20
+    }
+  },
+  "seconds": 35.041952200001106,
+  "render_fps": 55.81880794871749,
+  "render_p95_ms": 26.17889999964973,
+  "active_render_frames": 1340,
+  "processed_samples": 537,
+  "processed_fps": 15.329045395137609,
+  "inference_mean_ms": 54.59627560503934,
+  "moving_render_frames": 1290,
+  "raw_zero_force_fraction": 0.7395348837209302,
+  "resampled_zero_force_fraction": 0.0007751937984496124,
+  "errors": {}
+}

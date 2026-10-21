@@ -13,6 +13,7 @@ async function startCamera(getUserMedia,search='') {
     drawImage(){drawing.images++;},fillRect(){drawing.clears++;}};
   const video={readyState:0,play:async()=>{}};
   const state={};
+  const clock={now:0};
   let socket,worker;
   const inferenceRequests=[];
   class InferenceWorker {
@@ -29,7 +30,7 @@ async function startCamera(getUserMedia,search='') {
     URLSearchParams,WebSocket:Socket,location:{host:'127.0.0.1:17980',search},
     document:{querySelector:selector=>selector==='#camera'?video:selector==='#state'?state:{getContext:()=>canvasContext}},
     requestAnimationFrame:fn=>animationFrames.push(fn),setTimeout:fn=>queueMicrotask(fn),
-    performance:{now:()=>100},
+    performance:{now:()=>clock.now},
     Worker:InferenceWorker,createImageBitmap:async()=>({close(){}}),
     navigator:{mediaDevices:{
       enumerateDevices:async()=>[
@@ -45,9 +46,12 @@ async function startCamera(getUserMedia,search='') {
     await new Promise(resolve=>setImmediate(resolve));
   }
   return {calls,messages,drawing,inferenceRequests,
-    finishInference:()=>worker.onmessage({data:{kind:'result',inferenceMs:12,result:{landmarks:[],handedness:[]}}}),
+    finishInference:async time=>{
+      if(time!==undefined){clock.now=time;video.currentTime=time/1000;}
+      await worker.onmessage({data:{kind:'result',inferenceMs:12,
+        captureMs:inferenceRequests.at(-1).timestamp,result:{landmarks:[],handedness:[]}}});},
     acknowledge:preview=>socket.onmessage({data:JSON.stringify({ack:true,preview})}),
-    nextFrame:async time=>{video.readyState=2;video.currentTime=time/1000;await animationFrames.shift()(time);}};
+    nextFrame:async time=>{clock.now=time;video.readyState=2;video.currentTime=time/1000;await animationFrames.shift()(time);}};
 }
 const stream=()=>({getVideoTracks:()=>[{}]});
 
@@ -73,21 +77,48 @@ test('honors an explicit device and stops after four failed attempts',async()=>{
   assert.ok(messages.some(m=>m.state==='error'));
 });
 
-test('keeps the live preview and waits for acknowledgement before another result',async()=>{
+test('starts the next inference without waiting for repaint and publishes only the latest pending result',async()=>{
   const camera=await startCamera(()=>stream());
-  await camera.nextFrame(100);
-  await camera.nextFrame(150);
+  await camera.nextFrame(0);
+  await camera.nextFrame(33);
   assert.equal(camera.inferenceRequests.length,1);
   assert.equal(camera.drawing.images,0);
-  camera.finishInference();
+  await camera.finishInference(40);
+  assert.equal(camera.inferenceRequests.length,2);
   assert.equal(camera.drawing.images,1);
-  await camera.nextFrame(200);
-  assert.equal(camera.drawing.images,1);
+  await camera.finishInference(80);
+  await camera.finishInference(120);
+  assert.equal(camera.messages.filter(m=>m.kind==='hands').length,1);
   camera.acknowledge(true);
-  await camera.nextFrame(300);
-  camera.finishInference();
-  assert.equal(camera.drawing.images,2);
-  assert.equal(camera.messages.filter(m=>m.kind==='hands').length,2);
+  const published=camera.messages.filter(m=>m.kind==='hands');
+  assert.equal(camera.drawing.images,3);
+  assert.equal(published.length,2);
+  assert.equal(published[1].seq,3);
+});
+
+test('20 FPS target does not collapse to 15 FPS on a 30 FPS preview clock',async()=>{
+  const camera=await startCamera(()=>stream(),'?fps=20');
+  for(let i=0;i<30;i++){
+    const before=camera.inferenceRequests.length;
+    await camera.nextFrame(i*1000/30);
+    if(camera.inferenceRequests.length>before){await camera.finishInference();camera.acknowledge();}
+  }
+  assert.ok(camera.inferenceRequests.length>=19,
+    `only ${camera.inferenceRequests.length} inferences were scheduled`);
+});
+
+test('30 FPS captures stay bounded and carry the original capture timestamp',async()=>{
+  const camera=await startCamera(()=>stream(),'?fps=30');
+  for(let i=0;i<30;i++){
+    const before=camera.inferenceRequests.length;
+    await camera.nextFrame(i*1000/30);
+    if(camera.inferenceRequests.length>before){await camera.finishInference();camera.acknowledge();}
+  }
+  assert.equal(camera.inferenceRequests.length,30);
+  const frames=camera.messages.filter(m=>m.kind==='hands');
+  assert.equal(frames.length,30);
+  assert.equal(frames[10].captureMs,camera.inferenceRequests[10].timestamp);
+  assert.equal(camera.calls[0].video.frameRate.ideal,30);
 });
 
 async function startWorker(createModel) {
@@ -118,6 +149,7 @@ test('worker falls back to CPU and releases each transferred camera frame',async
   worker.send({image:{close(){closed++;}},timestamp:100});
   assert.equal(closed,1);
   assert.equal(worker.messages[1].result,result);
+  assert.equal(worker.messages[1].captureMs,100);
 });
 test('worker reports inference errors and still releases the camera frame',async()=>{
   const worker=await startWorker(()=>({detectForVideo(){throw new Error('frame failed');}}));

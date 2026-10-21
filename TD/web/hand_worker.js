@@ -22,7 +22,7 @@ self.onmessage = event => {
   try {
     const start = performance.now();
     const result = model.detectForVideo(image, timestamp);
-    self.postMessage({kind: 'result', result, inferenceMs: performance.now() - start});
+    self.postMessage({kind: 'result', result, captureMs: timestamp, inferenceMs: performance.now() - start});
   } catch (error) {
     self.postMessage({kind: 'error', message: error.message});
   } finally { image.close(); }
