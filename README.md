@@ -4,14 +4,14 @@
 
 本仓库独立承载 TD 版本的需求、任务、素材及后续开发。原 Processing 仓库继续作为原作基线；Liquid 仅是效果参考，不限定实现方式。
 
-> **当前阶段：需求规划。** 已整理中文 PRD 和 8 个开发切片；尚未交付可运行的 TD 工程。下面列出的是开发目标，不代表已经实现或验证。
+> **当前阶段：需求规划。** 中文 PRD 和 8 个开发任务已确认并发布至 GitHub Issues；尚未交付可运行的 TD 工程。下面列出的是开发目标，不代表已经实现或验证。
 
 ## 需求与开发任务
 
 - [中文 PRD](docs/td-prd.md)：产品边界、30 条用户故事、模块设计、测试建议与验收环境。
 - [开发任务拆分](docs/td-issues.md)：8 个完整功能切片、验收标准、依赖关系及人工参与环节。
-- [工程技能配置草案](docs/agents/setup-proposal.md)：GitHub Issues、分诊标签和后续开发约定。
-- [本仓库 GitHub Issues](https://github.com/clouder118/Art-Of-Ink_TD/issues)：任务发布目标；草案确认后再发布 PRD 和开发议题。
+- [工程技能配置](docs/agents/setup-proposal.md)：已生效的 GitHub Issues、分诊标签和后续开发约定。
+- [PRD 父议题 #1](https://github.com/clouder118/Art-Of-Ink_TD/issues/1) · [开发任务 #2—#9](https://github.com/clouder118/Art-Of-Ink_TD/issues)：已发布，依赖关系和执行方式详见任务索引。
 
 ## 已确认的目标
 
@@ -35,10 +35,11 @@ Processing 参考源码应使用 **Processing 3.5.4**；最新版 Processing 会
 ```text
 Art-Of-Ink_TD/
 ├── README.md
+├── AGENTS.md
 ├── docs/
 │   ├── td-prd.md
 │   ├── td-issues.md
-│   └── agents/setup-proposal.md
+│   └── agents/                # 技能配置记录、任务跟踪、标签与领域规则
 ├── TD/
 │   └── assets/
 │       ├── ink_painting3.png

@@ -2,42 +2,41 @@
 
 日期：2026-10-21
 
-状态：待用户确认的任务草案，尚未发布 GitHub Issues。
+状态：用户已确认，PRD 与 8 项开发任务已发布至 GitHub；功能开发尚未开始。
 
-依据：[中文 PRD](td-prd.md)。用户故事编号均对应该 PRD。
-
-正式任务跟踪器：[Art-Of-Ink_TD Issues](https://github.com/clouder118/Art-Of-Ink_TD/issues)。所有切片的开发提交与议题均归入该独立仓库，不使用 Processing 原作仓库。
+依据：[中文 PRD](td-prd.md) · [父议题 #1](https://github.com/clouder118/Art-Of-Ink_TD/issues/1) · [全部 GitHub Issues](https://github.com/clouder118/Art-Of-Ink_TD/issues)。
 
 ## 拆分原则与总览
 
-每个任务交付一条可以运行、演示或重放验证的完整路径；模块不是任务清单。所有任务保留原始 Processing 与 Liquid 工程。新工程在仓库 `TD/` 下组织，任务正文不锁定内部节点名或具体实现文件。
+每个任务交付一条可以运行、演示或重放验证的完整路径。新开发全部位于 Art-Of-Ink_TD，原 Processing 和 Liquid 工程保持不变。用户故事编号对应 PRD。
 
-- **AFK**：可依据明确行为、重放输入及工程自检完成；后续由整体验收检查最终艺术效果。
-- **HITL**：需要真实摄像头前的人体动作、主观视觉反馈或最终现场验收。用合成输入通过测试不能取代该环节。
-- 阻塞关系表示实施顺序，不等同于标签；被阻塞的任务即使规格完整，也应等待前置任务完成。
+- **AFK**：规格完整，可由代理根据验收标准执行，使用 `ready-for-agent` 标签。
+- **HITL**：需要真实手势配合或用户视觉验收，使用 `ready-for-human` 标签。
+- 标签表示执行方式，不代表已开始；被阻塞的任务必须等待前置任务完成。
+- GitHub Issues 是正式状态来源，下面的正文为发布时副本，后续状态以议题为准。
 
-| 切片 | 标题 | 类型 | 被哪些切片阻塞 | 用户故事 |
+| 切片 / 议题 | 标题 | 类型 | 前置任务 | 用户故事 |
 | --- | --- | --- | --- | --- |
-| S1 | 单只食指通过摄像头推动山水的最小闭环 | HITL | 无 | 1、2、3、6、9、22 |
-| S2 | 让水墨随移动速度流动并自然恢复山水 | AFK | S1 | 1、7、8、15 |
-| S3 | 手势启停、抗抖及丢失后的安全恢复 | AFK | S1 | 3、4、5、8、13、14、16、25 |
-| S4 | 左右手通用且单手独占控制 | AFK | S3 | 10、11、12、14 |
-| S5 | 纯净山水展示、调试切换与循环音乐 | AFK | S1 | 18、19、20、21、24 |
-| S6 | 工程迁移后离线打开即可完整体验 | AFK | S2、S4、S5 | 22、23、25、27、28、29、30 |
-| S7 | 完整交互下以稳定 60 FPS 为目标优化 | AFK | S6 | 17、26 |
-| S8 | 本机真实手势、视觉效果及离线交付验收 | HITL | S7 | 1—30 |
+| [S1 / #2](https://github.com/clouder118/Art-Of-Ink_TD/issues/2) | 单只食指通过摄像头推动山水的最小闭环 | HITL | 无 | 1、2、3、6、9、22 |
+| [S2 / #3](https://github.com/clouder118/Art-Of-Ink_TD/issues/3) | 让水墨随移动速度流动并自然恢复山水 | AFK | [#2](https://github.com/clouder118/Art-Of-Ink_TD/issues/2) | 1、7、8、15 |
+| [S3 / #4](https://github.com/clouder118/Art-Of-Ink_TD/issues/4) | 手势启停、抗抖及丢失后的安全恢复 | AFK | [#2](https://github.com/clouder118/Art-Of-Ink_TD/issues/2) | 3、4、5、8、13、14、16、25 |
+| [S4 / #5](https://github.com/clouder118/Art-Of-Ink_TD/issues/5) | 左右手通用且单手独占控制 | AFK | [#4](https://github.com/clouder118/Art-Of-Ink_TD/issues/4) | 10、11、12、14 |
+| [S5 / #6](https://github.com/clouder118/Art-Of-Ink_TD/issues/6) | 纯净山水展示、调试切换与循环音乐 | AFK | [#2](https://github.com/clouder118/Art-Of-Ink_TD/issues/2) | 18、19、20、21、24 |
+| [S6 / #7](https://github.com/clouder118/Art-Of-Ink_TD/issues/7) | 工程迁移后离线打开即可完整体验 | AFK | [#3](https://github.com/clouder118/Art-Of-Ink_TD/issues/3)、[#5](https://github.com/clouder118/Art-Of-Ink_TD/issues/5)、[#6](https://github.com/clouder118/Art-Of-Ink_TD/issues/6) | 22、23、25、27、28、29、30 |
+| [S7 / #8](https://github.com/clouder118/Art-Of-Ink_TD/issues/8) | 完整交互下以稳定 60 FPS 为目标优化 | AFK | [#7](https://github.com/clouder118/Art-Of-Ink_TD/issues/7) | 17、26 |
+| [S8 / #9](https://github.com/clouder118/Art-Of-Ink_TD/issues/9) | 本机真实手势、视觉效果及离线交付验收 | HITL | [#8](https://github.com/clouder118/Art-Of-Ink_TD/issues/8) | 1—30 |
 
-S2、S3、S5 可在 S1 之后分别推进。S4 延续 S3 的稳定手势状态。S6 汇合体验功能并形成完整离线构建；S7 针对该构建测量与优化；S8 最终以真实操作和原作对照验收。这里的并行关系描述任务依赖，不代表已安排代理或自动开始开发。
-
-建议批准时一并确认：8 个切片的粒度、阻塞关系、是否需要合并或再拆分，以及 S1／S8 的 HITL 标记。
+S2、S3、S5 可在 S1 完成后分别推进。S4 承接 S3；S6 汇合 S2、S4、S5；S7 优化完整构建；S8 进行真实交互与视觉验收。此依赖关系不表示已启动并行代理或开发工作。
 
 ## S1：单只食指通过摄像头推动山水的最小闭环
+
+GitHub：[#2](https://github.com/clouder118/Art-Of-Ink_TD/issues/2)
 
 类型：**HITL**。对应用户故事：1、2、3、6、9、22。
 
 ### 父议题（Parent）
 
-中文 PRD 的 GitHub 议题，发布后填入真实编号与链接。
+[中文 PRD #1](https://github.com/clouder118/Art-Of-Ink_TD/issues/1)
 
 ### 构建内容（What to build）
 
@@ -61,11 +60,13 @@ S2、S3、S5 可在 S1 之后分别推进。S4 延续 S3 的稳定手势状态�
 
 ## S2：让水墨随移动速度流动并自然恢复山水
 
+GitHub：[#3](https://github.com/clouder118/Art-Of-Ink_TD/issues/3)
+
 类型：**AFK**。对应用户故事：1、7、8、15。
 
 ### 父议题（Parent）
 
-中文 PRD 的 GitHub 议题，发布后填入真实编号与链接。
+[中文 PRD #1](https://github.com/clouder118/Art-Of-Ink_TD/issues/1)
 
 ### 构建内容（What to build）
 
@@ -82,15 +83,17 @@ S2、S3、S5 可在 S1 之后分别推进。S4 延续 S3 的稳定手势状态�
 
 ### 阻塞关系（Blocked by）
 
-- S1。发布时替换为真实 GitHub 议题引用。
+- [#2](https://github.com/clouder118/Art-Of-Ink_TD/issues/2)。
 
 ## S3：手势启停、抗抖及丢失后的安全恢复
+
+GitHub：[#4](https://github.com/clouder118/Art-Of-Ink_TD/issues/4)
 
 类型：**AFK**。对应用户故事：3、4、5、8、13、14、16、25。
 
 ### 父议题（Parent）
 
-中文 PRD 的 GitHub 议题，发布后填入真实编号与链接。
+[中文 PRD #1](https://github.com/clouder118/Art-Of-Ink_TD/issues/1)
 
 ### 构建内容（What to build）
 
@@ -108,15 +111,17 @@ S2、S3、S5 可在 S1 之后分别推进。S4 延续 S3 的稳定手势状态�
 
 ### 阻塞关系（Blocked by）
 
-- S1。发布时替换为真实 GitHub 议题引用。
+- [#2](https://github.com/clouder118/Art-Of-Ink_TD/issues/2)。
 
 ## S4：左右手通用且单手独占控制
+
+GitHub：[#5](https://github.com/clouder118/Art-Of-Ink_TD/issues/5)
 
 类型：**AFK**。对应用户故事：10、11、12、14。
 
 ### 父议题（Parent）
 
-中文 PRD 的 GitHub 议题，发布后填入真实编号与链接。
+[中文 PRD #1](https://github.com/clouder118/Art-Of-Ink_TD/issues/1)
 
 ### 构建内容（What to build）
 
@@ -133,15 +138,17 @@ S2、S3、S5 可在 S1 之后分别推进。S4 延续 S3 的稳定手势状态�
 
 ### 阻塞关系（Blocked by）
 
-- S3。发布时替换为真实 GitHub 议题引用。
+- [#4](https://github.com/clouder118/Art-Of-Ink_TD/issues/4)。
 
 ## S5：纯净山水展示、调试切换与循环音乐
+
+GitHub：[#6](https://github.com/clouder118/Art-Of-Ink_TD/issues/6)
 
 类型：**AFK**。对应用户故事：18、19、20、21、24。
 
 ### 父议题（Parent）
 
-中文 PRD 的 GitHub 议题，发布后填入真实编号与链接。
+[中文 PRD #1](https://github.com/clouder118/Art-Of-Ink_TD/issues/1)
 
 ### 构建内容（What to build）
 
@@ -157,15 +164,17 @@ S2、S3、S5 可在 S1 之后分别推进。S4 延续 S3 的稳定手势状态�
 
 ### 阻塞关系（Blocked by）
 
-- S1。发布时替换为真实 GitHub 议题引用。
+- [#2](https://github.com/clouder118/Art-Of-Ink_TD/issues/2)。
 
 ## S6：工程迁移后离线打开即可完整体验
+
+GitHub：[#7](https://github.com/clouder118/Art-Of-Ink_TD/issues/7)
 
 类型：**AFK**。对应用户故事：22、23、25、27、28、29、30。
 
 ### 父议题（Parent）
 
-中文 PRD 的 GitHub 议题，发布后填入真实编号与链接。
+[中文 PRD #1](https://github.com/clouder118/Art-Of-Ink_TD/issues/1)
 
 ### 构建内容（What to build）
 
@@ -184,15 +193,17 @@ S2、S3、S5 可在 S1 之后分别推进。S4 延续 S3 的稳定手势状态�
 
 ### 阻塞关系（Blocked by）
 
-- S2、S4、S5。发布时替换为真实 GitHub 议题引用。
+- [#3](https://github.com/clouder118/Art-Of-Ink_TD/issues/3)、[#5](https://github.com/clouder118/Art-Of-Ink_TD/issues/5)、[#6](https://github.com/clouder118/Art-Of-Ink_TD/issues/6)。
 
 ## S7：完整交互下以稳定 60 FPS 为目标优化
+
+GitHub：[#8](https://github.com/clouder118/Art-Of-Ink_TD/issues/8)
 
 类型：**AFK**。对应用户故事：17、26。
 
 ### 父议题（Parent）
 
-中文 PRD 的 GitHub 议题，发布后填入真实编号与链接。
+[中文 PRD #1](https://github.com/clouder118/Art-Of-Ink_TD/issues/1)
 
 ### 构建内容（What to build）
 
@@ -210,15 +221,17 @@ S2、S3、S5 可在 S1 之后分别推进。S4 延续 S3 的稳定手势状态�
 
 ### 阻塞关系（Blocked by）
 
-- S6。发布时替换为真实 GitHub 议题引用。
+- [#7](https://github.com/clouder118/Art-Of-Ink_TD/issues/7)。
 
 ## S8：本机真实手势、视觉效果及离线交付验收
+
+GitHub：[#9](https://github.com/clouder118/Art-Of-Ink_TD/issues/9)
 
 类型：**HITL**。对应用户故事：1—30。
 
 ### 父议题（Parent）
 
-中文 PRD 的 GitHub 议题，发布后填入真实编号与链接。
+[中文 PRD #1](https://github.com/clouder118/Art-Of-Ink_TD/issues/1)
 
 ### 构建内容（What to build）
 
@@ -236,14 +249,11 @@ S2、S3、S5 可在 S1 之后分别推进。S4 延续 S3 的稳定手势状态�
 
 ### 阻塞关系（Blocked by）
 
-- S7，以及此前切片中未解决的兼容性、离线或效果阻塞。发布时替换为真实 GitHub 议题引用。
+- [#8](https://github.com/clouder118/Art-Of-Ink_TD/issues/8)，以及此前切片中未解决的兼容性、离线或效果阻塞。
 
-## 发布计划
+## 发布记录
 
-1. 用户确认模块、测试范围、任务粒度、依赖与 HITL／AFK 标记。
-2. 发布中文 PRD 父议题，标签为 `ready-for-agent`。
-3. 按 S1、S2、S3、S4、S5、S6、S7、S8 的拓扑顺序发布子议题，写入真实父议题和依赖编号。
-4. AFK 任务使用 `ready-for-agent`，HITL 任务使用 `ready-for-human`；阻塞关系在正文显式保留。
-5. 回填本地文档的议题链接；不关闭或更改父议题的业务状态，不自动开始开发。
-
-待发布之前，S1—S8 只是稳定的本地草案标识，并非 GitHub 议题编号。父议题和阻塞引用中的待填文字在实际发布时必须被替换。
+- 用户已确认模块、测试范围、切片粒度、依赖和 HITL／AFK 标记。
+- PRD 为 #1；S1—S8 分别为 #2—#9，均已核验为打开状态。
+- 每项任务包含父议题、构建内容、验收清单及真实阻塞议题引用。
+- 父议题发布后没有被关闭或改写；任务发布不代表功能已经开发完成。
