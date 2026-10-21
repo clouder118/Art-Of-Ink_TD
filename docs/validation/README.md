@@ -32,5 +32,7 @@
 - [真实手势性能](real-performance.json) 单独记录完整展示配置；`finished: false` 表示尚在测量。已撤回的预览绘制优化见 `real-performance-preview-suppression.json`，平均仅 34.59 FPS，不能作为性能通过证据。
 - [分离窗口对照](performance-isolation.json) 与 [同步模式对照](window-sync-probe.json) 显示第二原生窗口导致明显降速，因此交付改为主窗口内的预览浮层。开发进程中五分钟浮层测量见 `real-performance-overlay-before-coldstart.json`，平均 37.49 FPS，仍未达标。
 - `TD/tools/monitor_runtime.py` 可只读采样交付工程的状态文件，报告为每秒抽样的滚动 600 帧统计；窗口相互重叠，不能将采样均值当成独立计数得到的全程平均 FPS。该工具不添加 TD 测试节点、不注入输入，也不记录影像或关键点。
+- [最终冷启动工程的五分钟观察](cold-start-performance.json)：298 次采样，滚动 FPS 均值约 59.91、最低 58.15，滚动 P95 帧间隔最高约 17.74 ms；摄像头均为 `ready`、没有节点错误，用户确认没有明显卡顿。该结果与旧开发进程的测量分开保存。
+- [离线迁移验收](offline-acceptance.json)：Git 归档迁移副本的资源测试与工程哈希通过；用户实际关闭 TD、断网并重开迁移工程后，确认预览、手势与音乐均正常。
 
 基准完成会恢复真实控制器与原静音状态。真实手部动作、视觉接受程度、离线重启和扬声器实际听感仍须单独验收。
