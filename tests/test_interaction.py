@@ -45,6 +45,22 @@ class GestureTests(unittest.TestCase):
         h=hand(); h['landmarks'][8]['x']=float('nan')
         self.assertFalse(pointing_index(h))
 
+    def test_open_palm_rejected(self):
+        h=hand()
+        for mcp,pip,dip,tip in [(9,10,11,12),(13,14,15,16),(17,18,19,20)]:
+            x=h['landmarks'][mcp]['x']
+            for i,y in [(pip,.45),(dip,.32),(tip,.18)]:
+                h['landmarks'][i]=dict(x=x,y=y,z=0)
+        self.assertFalse(pointing_index(h))
+
+    def test_fist_and_low_confidence_rejected(self):
+        h=hand()
+        h['landmarks'][7]=dict(x=.47,y=.62,z=0)
+        h['landmarks'][8]=dict(x=.45,y=.72,z=0)
+        self.assertFalse(pointing_index(h))
+        h=hand();h['confidence']=.2
+        self.assertFalse(pointing_index(h))
+
 
 class InteractionTests(unittest.TestCase):
     def setUp(self):

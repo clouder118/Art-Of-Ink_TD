@@ -1,7 +1,6 @@
 """TD application lifecycle and the thin adapter around the pure controller."""
 import importlib.util
 import json
-import math
 from pathlib import Path
 import time
 from collections import deque
@@ -18,9 +17,25 @@ def start():
     global _controller, _last_time, _session, _reset_frames, _report_at
     root = me.parent()
     folder = Path(project.folder)
-    spec = importlib.util.spec_from_file_location('ink_interaction', folder / 'src/interaction.py')
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    stop()
+    required=['src/interaction.py','assets/ink_painting3.png','assets/龚一 - 山居吟.mp3',
+              'web/index.html','web/hand_tracking.js','web/hand_worker.js','web/vendor/vision_bundle.mjs',
+              'web/models/hand_landmarker.task','web/vendor/wasm/vision_wasm_internal.js',
+              'web/vendor/wasm/vision_wasm_internal.wasm']
+    missing=[name for name in required if not (folder/name).is_file()]
+    try:
+        if missing:
+            raise FileNotFoundError('缺失工程资源：'+', '.join(missing))
+        spec = importlib.util.spec_from_file_location('ink_interaction', folder / 'src/interaction.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    except (OSError, ImportError, SyntaxError) as error:
+        status={'state':'error','message':str(error)}
+        root.store('camera_status',status)
+        root.op('status_text').par.text='Art of Ink · STARTUP ERROR\n\n'+str(error)
+        _publish(dict(camera=status,input={'active':False},errors={'startup':str(error)}))
+        root.op('output_window').par.performance.pulse()
+        return
     _controller = module.Interaction()
     _last_time = time.perf_counter()
     _session = None
@@ -34,6 +49,7 @@ def start():
     root.op('hand_camera').par.active = True
     root.op('music').par.cuepulse.pulse()
     root.op('output_window').par.performance.pulse()
+    root.par.Preview=True
 
 
 def reset():
@@ -56,6 +72,18 @@ def _vector(node, index, values):
         getattr(node.par, 'vec%dvalue%s' % (index, axis)).val = value
 
 
+def _publish(report):
+    try:
+        report_dir=Path(project.folder)/'.runtime'
+        report_dir.mkdir(exist_ok=True)
+        temporary=report_dir/'status.json.tmp'
+        temporary.write_text(json.dumps(report,ensure_ascii=False),encoding='utf-8')
+        temporary.replace(report_dir/'status.json')
+    except OSError:
+        # Diagnostics must not interrupt the artwork, including a read-only copy.
+        pass
+
+
 def tick():
     global _last_time, _session, _reset_frames, _report_at
     if _controller is None:
@@ -72,16 +100,8 @@ def tick():
         _controller.reset()
         _session = session
     frame = root.fetch('latest_frame', None)
+    _controller.smoothing_seconds = root.par.Smoothing.eval()
     interaction = _controller.update(frame, now)
-    if root.fetch('replay_start', None) is not None:
-        t = now - root.fetch('replay_start')
-        speed = 1.2 if (t % 10) > 5 else 0.35
-        x = 0.5 + .25*math.sin(t*speed)
-        y = 0.5 + .15*math.cos(t*speed)
-        previous = root.fetch('replay_previous', (x,y))
-        root.store('replay_previous', (x,y))
-        interaction = dict(active=True,x=x,y=y,dx=x-previous[0],dy=y-previous[1],
-                           vx=(x-previous[0])/dt,vy=(y-previous[1])/dt,hand='',reason='replay')
     root.store('interaction_output', interaction)
     pointer = (interaction['x'],interaction['y'],interaction['dx'],interaction['dy'])
     step = (dt,root.par.Gain.eval(),root.par.Radius.eval(),root.par.Vorticity.eval())
@@ -91,6 +111,7 @@ def tick():
         index = 1 if name == 'advect_velocity' else 0
         _vector(node,index,step)
     _vector(root.op('advect_velocity'),2,(int(_reset_frames>0),))
+    _vector(root.op('advect_velocity'),3,(root.par.Damping.eval(),))
     _vector(root.op('advect_ink'),1,(int(_reset_frames>0),))
     _vector(root.op('advect_ink'),2,(root.par.Restore.eval(),))
     root.op('out').cook(force=True)
@@ -113,18 +134,19 @@ def tick():
                     hand_count=len((frame or {}).get('hands',[])),
                     output=[root.op('out').width,root.op('out').height],
                     errors={n.path:n.errors() for n in root.children if n.errors()})
-        report_dir=Path(project.folder)/'.runtime'
-        report_dir.mkdir(exist_ok=True)
-        temporary=report_dir/'status.json.tmp'
-        try:
-            temporary.write_text(json.dumps(report,ensure_ascii=False),encoding='utf-8')
-            temporary.replace(report_dir/'status.json')
-        except OSError:
-            # Diagnostics must never interrupt the artwork (e.g. a read-only copy).
-            pass
+        _publish(report)
 
 
 def stop():
+    global _controller
     root=me.parent()
     root.op('hand_camera').par.active=False
     root.op('local_server').par.active=False
+    root.par.Preview=False
+    root.unstore('latest_frame')
+    if _controller:
+        _controller.reset()
+    _controller=None
+    _vector(root.op('advect_velocity'),0,(.5,.5,0,0))
+    _vector(root.op('advect_velocity'),2,(1,))
+    _vector(root.op('advect_ink'),1,(1,))

@@ -1,0 +1,12 @@
+{
+  "injected_missing_resources": true,
+  "camera_state": "error",
+  "controller_stopped": true,
+  "camera_active": false,
+  "pointer": [
+    0.5,
+    0.5,
+    0.0,
+    0.0
+  ]
+}

@@ -1,6 +1,4 @@
 // Uses Google's MediaPipe Tasks Vision (Apache-2.0); all assets are local.
-import { FilesetResolver, HandLandmarker } from './vendor/vision_bundle.mjs';
-
 const video = document.querySelector('#camera');
 const canvas = document.querySelector('#preview');
 const context = canvas.getContext('2d', { alpha: false });
@@ -8,10 +6,12 @@ const state = document.querySelector('#state');
 const query = new URLSearchParams(location.search);
 const targetFps = Math.min(30, Math.max(5, Number(query.get('fps') || 30)));
 const deviceId = query.get('camera') || '';
-let socket, model, sequence = 0, outstanding = false, sentAt = 0;
+let socket, modelReady = false, sequence = 0, outstanding = false, sentAt = 0;
+let inferencePending = false;
 let lastVideoTime = -1, nextInference = 0, lastHeartbeat = 0;
 let currentStatus = { state: 'loading', message: '正在加载本地模型' };
 let delegate = 'GPU';
+let openingCamera = false;
 
 function send(value) {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(value));
@@ -47,60 +47,88 @@ function paint(result) {
   }
   context.restore();
 }
-function tick(now) {
+function consumeResult(result, inferenceMs) {
+  paint(result);
+  if (socket?.readyState === WebSocket.OPEN) {
+    send({ kind: 'hands', seq: ++sequence, inferenceMs, sentMs: performance.now(),
+      hands: result.landmarks.map((landmarks, i) => ({ landmarks,
+        label: result.handedness[i]?.[0]?.categoryName || 'Unknown',
+        confidence: result.handedness[i]?.[0]?.score || 0 })) });
+    outstanding = true;
+    sentAt = performance.now();
+  }
+}
+async function tick(now) {
   requestAnimationFrame(tick);
   if (now - lastHeartbeat > 1000) {
     send({ kind: 'status', ...currentStatus });
     lastHeartbeat = now;
   }
-  if (!model || video.readyState < 2 || now < nextInference || video.currentTime === lastVideoTime) return;
+  if (!modelReady || inferencePending || video.readyState < 2 || now < nextInference || video.currentTime === lastVideoTime) return;
   if (outstanding && now - sentAt < 500) return;
   lastVideoTime = video.currentTime;
   nextInference = now + 1000 / targetFps;
+  inferencePending = true;
   try {
-    const start = performance.now();
-    const result = model.detectForVideo(video, start);
-    const inferenceMs = performance.now() - start;
-    paint(result);
-    if (socket?.readyState === WebSocket.OPEN) {
-      send({ kind: 'hands', seq: ++sequence, inferenceMs, sentMs: performance.now(),
-        hands: result.landmarks.map((landmarks, i) => ({ landmarks,
-          label: result.handedness[i]?.[0]?.categoryName || 'Unknown',
-          confidence: result.handedness[i]?.[0]?.score || 0 })) });
-      outstanding = true;
-      sentAt = performance.now();
-    }
+    const image = await createImageBitmap(video);
+    worker.postMessage({image, timestamp: now}, [image]);
   } catch (error) {
+    inferencePending = false;
     report('error', `识别失败：${error.message}`);
   }
 }
 connect();
 requestAnimationFrame(tick);
-async function start() {
+async function openCamera() {
+  if (openingCamera) return;
+  openingCamera = true;
+  let lastError;
   try {
-    const vision = await FilesetResolver.forVisionTasks('./vendor/wasm');
-    const options = { baseOptions: { modelAssetPath: './models/hand_landmarker.task', delegate },
-      runningMode: 'VIDEO', numHands: 2, minHandDetectionConfidence: 0.55,
-      minHandPresenceConfidence: 0.55, minTrackingConfidence: 0.55 };
-    try { model = await HandLandmarker.createFromOptions(vision, options); }
-    catch (error) {
-      delegate = 'CPU';
-      options.baseOptions.delegate = delegate;
-      model = await HandLandmarker.createFromOptions(vision, options);
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const devices = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+      // Windows can select an unavailable virtual camera as the default.
+      const physical = devices.filter(d => d.label && !/virtual|obs/i.test(d.label)).map(d => d.deviceId);
+      const candidates = deviceId ? [deviceId] : [...new Set([...physical, ''])];
+      for (const candidate of candidates) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: {
+            width: {ideal:640}, height:{ideal:480}, frameRate:{ideal:targetFps,max:30},
+            ...(candidate ? {deviceId:{exact:candidate}} : {}) } });
+          video.srcObject = stream;
+          await video.play();
+          lastVideoTime = -1;
+          send({kind:'devices',devices:(await navigator.mediaDevices.enumerateDevices())
+            .filter(d => d.kind === 'videoinput').map(d => ({id:d.deviceId,label:d.label}))});
+          report('ready', `摄像头已连接 · ${delegate} · ${targetFps} FPS 目标`);
+          stream.getVideoTracks()[0].onended = () => {
+            report('camera', '摄像头已断开，正在尝试恢复…');
+            video.srcObject = null;
+            setTimeout(openCamera, 1000);
+          };
+          return;
+        } catch (error) { lastError = error; }
+      }
+      if (lastError?.name === 'NotAllowedError') break;
+      report('camera', `摄像头暂不可用，正在重试 (${attempt+1}/4)…`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt+1)));
     }
-    report('camera', '正在打开摄像头…');
-    const constraints = { audio: false, video: { width: {ideal:640}, height:{ideal:480},
-      frameRate: { ideal: targetFps, max: 30 }, ...(deviceId ? { deviceId: { exact: deviceId } } : {}) } };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = stream;
-    await video.play();
-    const devices = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput')
-      .map(d => ({ id: d.deviceId, label: d.label }));
-    send({ kind: 'devices', devices });
-    report('ready', `摄像头已连接 · ${delegate} · ${targetFps} FPS 目标`);
-    stream.getVideoTracks()[0].onended = () => report('error', '摄像头已断开，请重新连接并重启识别');
-  } catch (error) {
-    report('error', `启动失败：${error.name} · ${error.message}`);
-  }
+    report('error', `摄像头启动失败：${lastError?.name} · ${lastError?.message}`);
+  } finally { openingCamera = false; }
 }
-start();
+const worker = new Worker('./hand_worker.js');
+worker.onmessage = async event => {
+  const message = event.data;
+  if (message.kind === 'ready') {
+    modelReady = true;
+    delegate = message.delegate;
+    report('camera', '正在打开摄像头…');
+    await openCamera();
+  } else if (message.kind === 'result') {
+    inferencePending = false;
+    consumeResult(message.result, message.inferenceMs);
+  } else if (message.kind === 'error') {
+    inferencePending = false;
+    report('error', `识别失败：${message.message}`);
+  }
+};
+worker.onerror = error => { inferencePending = false; report('error', `识别线程失败：${error.message}`); };

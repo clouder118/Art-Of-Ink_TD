@@ -1,0 +1,47 @@
+{
+  "segments": [
+    {
+      "phase": "baseline",
+      "mean_difference": 0.0,
+      "changed_fraction": 0.0,
+      "max_velocity": 0.0,
+      "finite": true,
+      "impulse": 0.0
+    },
+    {
+      "phase": "slow",
+      "mean_difference": 0.002360469428822398,
+      "changed_fraction": 0.08196604520865533,
+      "max_velocity": 80.5,
+      "finite": true,
+      "impulse": 0.00043916250024267356
+    },
+    {
+      "phase": "restore_slow",
+      "mean_difference": 4.664703374146484e-05,
+      "changed_fraction": 0.0009841093508500772,
+      "max_velocity": 0.0,
+      "finite": true,
+      "impulse": 0.0
+    },
+    {
+      "phase": "fast",
+      "mean_difference": 0.002266320399940014,
+      "changed_fraction": 0.052336505023183925,
+      "max_velocity": 195.25,
+      "finite": true,
+      "impulse": 0.0009783999994397163
+    },
+    {
+      "phase": "restore_fast",
+      "mean_difference": 5.140767461853102e-05,
+      "changed_fraction": 0.0021602105873261205,
+      "max_velocity": 0.0,
+      "finite": true,
+      "impulse": 0.0
+    }
+  ],
+  "camera": "ready",
+  "error": null,
+  "pass": true
+}

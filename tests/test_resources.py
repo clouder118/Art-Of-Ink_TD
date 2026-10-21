@@ -20,9 +20,12 @@ class OfflineResourcesTests(unittest.TestCase):
 
     def test_custom_camera_page_uses_local_model_and_runtime(self):
         source = (WEB / 'hand_tracking.js').read_text(encoding='utf-8')
-        self.assertIn("'./vendor/vision_bundle.mjs'", source)
-        self.assertIn("'./vendor/wasm'", source)
-        self.assertIn("'./models/hand_landmarker.task'", source)
+        self.assertIn("'./hand_worker.js'", source)
+        worker = (WEB / 'hand_worker.js').read_text(encoding='utf-8')
+        self.assertIn("'./vendor/vision_bundle.mjs'", worker)
+        self.assertIn("'./vendor/wasm'", worker)
+        self.assertIn("'./models/hand_landmarker.task'", worker)
+        self.assertNotRegex(worker, r'https?://')
         self.assertNotRegex(source, r'https?://')
         self.assertNotRegex((WEB / 'index.html').read_text(encoding='utf-8'), r'https?://')
 

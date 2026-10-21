@@ -1,0 +1,17 @@
+{
+  "finished": true,
+  "measured_seconds": 300.02581009999994,
+  "frames": 11247,
+  "fps": 37.486774875305976,
+  "p50_ms": 22.429799999372335,
+  "p95_ms": 47.11460000180523,
+  "p99_ms": 57.65389999942272,
+  "over_20ms_fraction": 0.7607361963190185,
+  "active_frames": 892,
+  "camera_frames": 4261,
+  "inference_mean_ms": 32.80384886178335,
+  "inference_p95_ms": 51.19999999925494,
+  "camera_state": "ready",
+  "real_controller": true,
+  "errors": {}
+}
