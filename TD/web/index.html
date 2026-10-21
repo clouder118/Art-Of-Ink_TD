@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Art of Ink · Local hand tracking</title>
+<style>
+html,body{margin:0;background:#171d20;color:#e1e4dc;font:16px sans-serif;overflow:hidden}
+canvas{width:100vw;height:100vh;object-fit:contain}video{display:none}
+#state{position:fixed;left:12px;bottom:12px;padding:6px;background:#0009}
+</style>
+<video id="camera" autoplay playsinline muted></video>
+<canvas id="preview" width="640" height="480"></canvas>
+<div id="state">正在加载本地模型…</div>
+<script type="module" src="./hand_tracking.js"></script>
+</html>

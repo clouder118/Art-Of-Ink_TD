@@ -1,0 +1,5 @@
+# Keep distributed runtime/model bytes identical on every checkout.
+TD/web/vendor/** binary
+TD/web/models/** binary
+*.toe binary
+*.tox binary

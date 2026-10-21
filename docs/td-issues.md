@@ -2,7 +2,7 @@
 
 日期：2026-10-21
 
-状态：用户已确认，PRD 与 8 项开发任务已发布至 GitHub；功能开发尚未开始。
+状态：用户已确认，PRD 与 8 项开发任务已发布至 GitHub；功能原型正在本机验证。真实摄像头推动与默认强度已获用户反馈确认，其他验收进度见 [开发验证记录](development-validation.md)，不以源码存在代替议题验收完成。
 
 依据：[中文 PRD](td-prd.md) · [父议题 #1](https://github.com/clouder118/Art-Of-Ink_TD/issues/1) · [全部 GitHub Issues](https://github.com/clouder118/Art-Of-Ink_TD/issues)。
 

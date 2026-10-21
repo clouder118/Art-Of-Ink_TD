@@ -16,3 +16,7 @@ __pycache__/
 *.toe.toc
 *.tox.dir/
 *.tox.toc
+
+# Local development bridge and measurements
+/TD/.runtime/
+node_modules/
