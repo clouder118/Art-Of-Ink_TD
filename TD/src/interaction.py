@@ -42,6 +42,36 @@ def pointing_index(hand):
         return False
 
 
+def open_palm(hand):
+    """Five extended, spread fingers; distances/angles tolerate hand rotation."""
+    try:
+        points = [_point(p) for p in hand['landmarks']]
+        if len(points) != 21 or not all(math.isfinite(v) for p in points for v in p):
+            return False
+        palm = _distance(points[0], points[9])
+        if float(hand.get('confidence', 1)) < .5 or palm < .025:
+            return False
+        for mcp, pip, dip, tip in [(5,6,7,8),(9,10,11,12),(13,14,15,16),(17,18,19,20)]:
+            if (_angle(points[mcp],points[pip],points[dip]) < 150
+                    or _angle(points[pip],points[dip],points[tip]) < 150
+                    or _distance(points[tip],points[0]) < 1.12*_distance(points[pip],points[0])):
+                return False
+        thumb = (_angle(points[2],points[3],points[4]) > 145
+                 and _distance(points[4],points[5]) > .65*palm
+                 and _distance(points[4],points[0]) > 1.1*_distance(points[2],points[0]))
+        spread = (_distance(points[8],points[20]) > 1.1*_distance(points[5],points[17])
+                  and all(_distance(points[a],points[b]) > .22*palm for a,b in [(8,12),(12,16),(16,20)]))
+        return thumb and spread
+    except (TypeError, ValueError, KeyError, IndexError):
+        return False
+
+
+def gesture_kind(hand):
+    if pointing_index(hand):
+        return 'index'
+    return 'palm' if open_palm(hand) else 'none'
+
+
 class Interaction:
     def __init__(self, activation_seconds=0.06, release_seconds=0.18,
                  stale_seconds=0.30, smoothing_seconds=0.035, deadband=0.0012,
@@ -63,15 +93,17 @@ class Interaction:
         self.previous_time = None
         self.position = (0.5, 0.5)
         self.active = False
+        self.gesture = 'none'
         self._baseline = False
 
     def _result(self, delta=(0.0, 0.0), velocity=(0.0, 0.0), reason='idle'):
         return dict(active=self.active, x=self.position[0], y=self.position[1],
                     dx=delta[0], dy=delta[1], vx=velocity[0], vy=velocity[1],
-                    hand=self.label or '', reason=reason)
+                    hand=self.label or '', reason=reason, gesture=self.gesture)
 
     def _invalid(self, now, reason):
         self.active = False
+        self.gesture = 'none'
         self._baseline = False
         self.valid_since = None
         if self.invalid_since is None:
@@ -96,14 +128,22 @@ class Interaction:
                 if _distance(_point(chosen['landmarks'][0]), self.wrist) > 0.45:
                     chosen = None
         else:
-            chosen = next((h for h in hands if pointing_index(h)), None)
+            chosen = next((h for h in hands if gesture_kind(h) != 'none'), None)
             if chosen:
                 self.label = chosen.get('label', 'Unknown')
                 self.wrist = _point(chosen['landmarks'][0])
-        if not chosen or not pointing_index(chosen):
+        kind = gesture_kind(chosen) if chosen else 'none'
+        if kind == 'none':
             return self._invalid(now, 'gesture-inactive')
+        if kind != self.gesture:
+            self.valid_since = None
+            self._baseline = False
+            self.active = False
+        self.gesture = kind
         self.wrist = _point(chosen['landmarks'][0])
         self.invalid_since = None
+        if kind == 'palm':
+            return self._result(reason='palm')
         if self.valid_since is None:
             self.valid_since = now
         if now - self.valid_since + 1e-9 < self.activation_seconds:
@@ -138,6 +178,92 @@ class Interaction:
         # a single noisy detection can teleport the fluid's injection point.
         self.position = tuple(old+step for old,step in zip(self.position,delta))
         return self._result(delta=delta, velocity=tuple(v/dt for v in delta), reason='active')
+
+
+class PalmEffects:
+    """Global edge-triggered cycle, independent of which hand owns control.
+
+    The envelope represents residual transport after release, not new forcing.
+    Counts advance only when a newly confirmed palm episode actually starts.
+    """
+    names = ('none', 'wave', 'spiral', 'ripple')
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self, block_until_release=False):
+        self.next_effect = 1
+        self.effect = 0
+        self.phase = 0.0
+        self.strength = 0.0
+        self.episode = False
+        self.blocked = block_until_release
+        self.hand = None
+        self.palm_since = None
+        self.samples = 0
+        self.release_since = None
+        self.last_seq = None
+        self.previous_time = None
+
+    def tracking_reset(self):
+        # A camera reconnect ends the episode but preserves the global cycle.
+        self.episode = False
+        # Reconnecting is not evidence that a reset-held palm was released.
+        self.palm_since = None
+        self.samples = 0
+        self.release_since = None
+        self.last_seq = None
+
+    def update(self, observation, frame, now):
+        dt = 0 if self.previous_time is None else max(0,min(.1,now-self.previous_time))
+        self.previous_time = now
+        fresh = bool(frame) and frame.get('seq') != self.last_seq
+        if fresh:
+            self.last_seq = frame.get('seq')
+        if self.release_since is not None and now-self.release_since >= .25-1e-9:
+            self.episode = False
+            self.blocked = False
+        stale = not frame or now-frame.get('received_at',-math.inf) > .30
+        palm = not stale and observation.get('gesture') == 'palm'
+        if stale:
+            self.tracking_reset()
+        elif not palm:
+            self.palm_since = None
+            self.samples = 0
+            if self.release_since is None:
+                self.release_since = now
+            if now-self.release_since >= .25-1e-9:
+                self.episode = False
+                self.blocked = False
+        else:
+            # A confirmed takeover cannot continue the previous hand's episode.
+            if self.episode and observation['hand'] != self.hand:
+                self.episode = False
+                self.palm_since = None
+                self.samples = 0
+            self.release_since = None
+            if not self.episode and not self.blocked and fresh:
+                if self.palm_since is None:
+                    self.palm_since = now
+                self.samples += 1
+                if self.samples >= 3 and now-self.palm_since >= .20-1e-9:
+                    self.effect = self.next_effect
+                    self.next_effect = self.effect % 3 + 1
+                    self.episode = True
+                    self.hand = observation['hand']
+                    self.phase = 0.0
+                    self.strength = 0.0
+        active = palm and self.episode and not self.blocked
+        target = 1.0 if active else 0.0
+        tau = .25/3 if active else .45
+        self.strength = target+(self.strength-target)*math.exp(-dt/tau)
+        if self.strength < .0001:
+            self.strength = 0.0
+        if self.strength > 0:
+            self.phase += dt
+        return dict(gesture=observation.get('gesture','none'), effect=self.names[self.effect],
+                    effect_id=self.effect, next_effect=self.names[self.next_effect],
+                    effect_time=self.phase, effect_strength=self.strength, palm_active=active)
 
 
 class MotionResampler:

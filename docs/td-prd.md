@@ -2,9 +2,11 @@
 
 日期：2026-10-21（北京时间）
 
-状态：首版已按已确认需求实现并完成本机验收。最新补充为摄像头预览默认打开、手动关闭后隐藏；实测证据见 [验收记录](development-validation.md)。
+状态：首版及 2026-10-22 摊手循环效果扩展均已完成本机验收。预览默认打开、手动关闭后隐藏；首版证据见 [验收记录](development-validation.md)，摊手扩展见 [专项规格与验证](palm-effects.md)。
 
 GitHub 父议题：[#1](https://github.com/clouder118/Art-Of-Ink_TD/issues/1)。
+
+2026-10-22 需求扩展：正式交互新增完全摊手，按斜向波浪、向外螺旋、扩散水波全局循环；握拳无新增效果，食指保持原行为。本次用户确认的扩展替代下文首版“仅食指”的范围限制，完整行为与验证见 [摊手效果规格](palm-effects.md)。
 
 任务跟踪目标：[clouder118/Art-Of-Ink_TD](https://github.com/clouder118/Art-Of-Ink_TD/issues)。
 

@@ -1,0 +1,8 @@
+{
+  "date": "2026-10-22",
+  "input": "real laptop camera gestures; no synthetic input during acceptance",
+  "steps": "six open-palm holds of 6–8 seconds separated by at least one second of release; then index movement",
+  "expected_sequence": ["wave", "spiral", "ripple", "wave", "spiral", "ripple"],
+  "user_feedback": "顺序正确，三种效果明显，食指正常",
+  "five_minute_feedback": "观察完成，流畅且切换、恢复正常"
+}

@@ -7,6 +7,7 @@ from collections import deque
 
 _controller = None
 _motion = None
+_palm = None
 _last_time = None
 _session = None
 _reset_frames = 0
@@ -17,7 +18,7 @@ _camera_seq = None
 
 
 def start():
-    global _controller, _motion, _last_time, _session, _reset_frames, _report_at, _camera_seq
+    global _controller, _motion, _palm, _last_time, _session, _reset_frames, _report_at, _camera_seq
     root = me.parent()
     folder = Path(project.folder)
     stop()
@@ -41,6 +42,7 @@ def start():
         return
     _controller = module.Interaction()
     _motion = module.MotionResampler()
+    _palm = module.PalmEffects()
     _last_time = time.perf_counter()
     _session = None
     _reset_frames = 4
@@ -65,6 +67,8 @@ def reset():
         _controller.reset()
     if _motion:
         _motion.reset()
+    if _palm:
+        _palm.reset(block_until_release=me.parent().fetch('interaction_output',{}).get('gesture')=='palm')
 
 
 def fullscreen():
@@ -107,6 +111,7 @@ def tick():
     if session != _session:
         _controller.reset()
         _motion.reset()
+        _palm.tracking_reset()
         _capture_times.clear()
         _camera_seq=None
         _session = session
@@ -118,6 +123,7 @@ def tick():
     _controller.smoothing_seconds = root.par.Smoothing.eval()
     interaction = _controller.update(frame, now)
     interaction = _motion.update(interaction,now)
+    interaction.update(_palm.update(interaction,frame,now))
     root.store('interaction_output', interaction)
     pointer = (interaction['x'],interaction['y'],interaction['dx'],interaction['dy'])
     step = (dt,root.par.Gain.eval(),root.par.Radius.eval(),root.par.Vorticity.eval())
@@ -130,6 +136,8 @@ def tick():
     _vector(root.op('advect_velocity'),3,(root.par.Damping.eval(),))
     _vector(root.op('advect_ink'),1,(int(_reset_frames>0),))
     _vector(root.op('advect_ink'),2,(root.par.Restore.eval(),))
+    _vector(root.op('advect_ink'),3,(interaction['effect_id'],interaction['effect_time'],
+                                   interaction['effect_strength'],root.par.Palmstrength.eval()))
     root.op('out').cook(force=True)
     _reset_frames = max(0,_reset_frames-1)
     if now >= _report_at:
@@ -142,10 +150,12 @@ def tick():
         recognition_fps=(len(_capture_times)-1)/span if span>0 and now-(frame or {}).get('received_at',0)<.3 else 0
         root.op('status_text').par.text = ('Art of Ink · DEBUG\n\n'
             'Camera: %s\n%s\n\nInput: %s\nHand: %s\nPosition: %.3f, %.3f\n'
+            'Gesture: %s\nPalm effect: %s\nNext effect: %s\n'
             'Frame rate: %.1f FPS\nP95 interval: %.1f ms\nRecognition: %.1f FPS\nInference: %.1f ms\n\n'
             'Use the component parameters for debug, mute and fullscreen.' %
             (status.get('state','loading'),status.get('message',''),interaction['reason'],
-             interaction['hand'],interaction['x'],interaction['y'],fps,p95,recognition_fps,
+             interaction['hand'],interaction['x'],interaction['y'],interaction['gesture'],
+             interaction['effect'],interaction['next_effect'],fps,p95,recognition_fps,
              (frame or {}).get('inferenceMs',0)))
         report=dict(camera=status,input=interaction,fps=fps,p95_ms=p95,recognition_fps=recognition_fps,
                     inference_ms=(frame or {}).get('inferenceMs',0),
@@ -156,7 +166,7 @@ def tick():
 
 
 def stop():
-    global _controller, _motion
+    global _controller, _motion, _palm
     root=me.parent()
     root.op('hand_camera').par.active=False
     root.op('local_server').par.active=False
@@ -168,6 +178,8 @@ def stop():
     if _motion:
         _motion.reset()
     _motion=None
+    _palm=None
     _vector(root.op('advect_velocity'),0,(.5,.5,0,0))
     _vector(root.op('advect_velocity'),2,(1,))
     _vector(root.op('advect_ink'),1,(1,))
+    _vector(root.op('advect_ink'),3,(0,0,0,1))

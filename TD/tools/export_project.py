@@ -19,6 +19,8 @@ root.par.Preview.default=True
 root.par.Preview=True
 root.par.Camera=''
 root.par.Gain=24
+root.par.Palmstrength.default=1
+root.par.Palmstrength=1
 root.par.Inferencefps.default=20
 root.par.Inferencefps=20
 root.storage.clear()

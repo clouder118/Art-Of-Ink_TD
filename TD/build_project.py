@@ -19,6 +19,7 @@ page=root.appendCustomPage('Art of Ink')
 for name,label,value in [('Debug','Debug view',False),('Preview','Camera preview window',True),('Mute','Mute music',False)]:
     p=page.appendToggle(name,label=label)[0];p.default=value;p.val=value
 for name,label,value,low,high in [('Gain','Movement strength',24,0,80),
+        ('Palmstrength','Open palm effect strength',1,0,3),
         ('Radius','Brush radius / image height',.03125,.005,.15),
         ('Restore','Original restoration / second',.54,.05,3),
         ('Damping','Velocity dissipation / second',7.67,.3,20),
@@ -79,7 +80,7 @@ original.par.resolutionw=1280
 original.par.resolutionh=647
 ink_history=root.create(feedbackTOP,'ink_history')
 ink_history.inputConnectors[0].connect(original)
-ink=shader('advect_ink','ink.frag',[ink_history,projected,original],['uStep','uReset','uRestore'])
+ink=shader('advect_ink','ink.frag',[ink_history,projected,original],['uStep','uReset','uRestore','uPalm'])
 ink.par.format='rgba32float'
 ink.par.outputresolution='custom'
 ink.par.resolutionw=1280

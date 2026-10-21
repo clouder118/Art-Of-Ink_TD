@@ -26,6 +26,8 @@ def monitor(folder, seconds, output):
                     inference_ms=value.get('inference_ms'),
                     camera=value.get('camera', {}).get('state'),
                     active=value.get('input', {}).get('active', False),
+                    palm_active=value.get('input', {}).get('palm_active', False),
+                    effect=value.get('input', {}).get('effect', 'none'),
                     hands=value.get('hand_count', 0), errors=value.get('errors', {})))
                 previous_stamp = stamp
         except (OSError, ValueError):
@@ -39,6 +41,8 @@ def monitor(folder, seconds, output):
         mean_rolling_fps=statistics.mean(fps) if fps else None,
         max_rolling_p95_ms=max((s['p95_ms'] for s in samples if s['p95_ms'] is not None), default=None),
         samples_with_active_input=sum(bool(s['active']) for s in samples),
+        samples_with_palm_input=sum(bool(s['palm_active']) for s in samples),
+        palm_effects_seen=sorted({s['effect'] for s in samples if s['palm_active']}),
         samples_with_hands=sum(bool(s['hands']) for s in samples), samples=samples)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2), encoding='utf-8')

@@ -1,0 +1,15 @@
+{
+  "file": "TD/ArtOfInk_TD.toe",
+  "sha256": "07c81f33ec96800dc16270728d9531af148e02e6f585ece533b1806c105a9485",
+  "temporary_nodes_present": [],
+  "storage_files": [],
+  "preview_default_on": true,
+  "recognition_default_20": true,
+  "palm_strength_default_1": true,
+  "color_32bit": true,
+  "auto_perform": true,
+  "continuous_force_embedded": true,
+  "palm_cycle_embedded": true,
+  "palm_shader_embedded": true,
+  "palm_uniform_reset": true
+}

@@ -1,0 +1,60 @@
+{
+  "input": "synthetic programmatic palm effects; not manual gesture acceptance",
+  "directions": {
+    "wave_start": -0.7965331109197462,
+    "wave_end": 0.5461467309891445,
+    "spiral_radial_mean": 0.009188374987138485,
+    "spiral_cross_mean": -0.0275651256877163,
+    "ripple_radial_mean": 0.01502770783711097,
+    "ripple_cross_max": 2.508437718304335e-08,
+    "fields_finite": true,
+    "pass": true
+  },
+  "segments": [
+    {
+      "phase": "wave",
+      "seconds": 5.00176449999708,
+      "mean_difference": 0.014353496953845024,
+      "changed_fraction": 0.2431329694744977,
+      "finite": true
+    },
+    {
+      "phase": "restore_wave",
+      "seconds": 8.001091000005545,
+      "mean_difference": 0.0003873376117553562,
+      "changed_fraction": 0.0,
+      "finite": true
+    },
+    {
+      "phase": "spiral",
+      "seconds": 5.014630699995905,
+      "mean_difference": 0.04143460839986801,
+      "changed_fraction": 0.5946870170015456,
+      "finite": true
+    },
+    {
+      "phase": "restore_spiral",
+      "seconds": 8.0001878999974,
+      "mean_difference": 0.0009770176839083433,
+      "changed_fraction": 0.0,
+      "finite": true
+    },
+    {
+      "phase": "ripple",
+      "seconds": 5.002262300004077,
+      "mean_difference": 0.026399340480566025,
+      "changed_fraction": 0.4014562403400309,
+      "finite": true
+    },
+    {
+      "phase": "restore_ripple",
+      "seconds": 8.016297000001941,
+      "mean_difference": 0.0006285194540396333,
+      "changed_fraction": 0.0,
+      "finite": true
+    }
+  ],
+  "error": null,
+  "passed": true,
+  "errors": {}
+}

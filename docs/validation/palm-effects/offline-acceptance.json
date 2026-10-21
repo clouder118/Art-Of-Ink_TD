@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-22",
+  "file": "TD/ArtOfInk_TD.toe",
+  "sha256": "07c81f33ec96800dc16270728d9531af148e02e6f585ece533b1806c105a9485",
+  "method": "User fully closed TD, disconnected network, reopened delivery project, checked artwork, then reconnected",
+  "preview_default_on": true,
+  "music_normal": true,
+  "index_interaction_normal": true,
+  "first_palm_effect": "wave",
+  "user_feedback": "全部正常，第一次摊手是波浪"
+}
